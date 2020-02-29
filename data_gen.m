@@ -26,7 +26,7 @@ classdef data_gen < handle
             hist_prices = gpuArray([]);
             company_list = [];
             for company = company_vec
-                hist_prices = [hist_prices gpuArray(company.Close)];
+                hist_prices = [hist_prices gpuArray(company.Open)];
             end
             hist_prices = transpose(hist_prices);
             data.hist_prices = hist_prices;
