@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 from alpha_vantage.timeseries import TimeSeries
 
 class nn():
@@ -58,25 +59,26 @@ class nn():
         self.M = M
 
         # input (CNN) layer
-        self.W_in = np.array([np.hamming(M) for n in range(i_num)])
+        #self.W_in = np.array([np.hamming(M) for n in range(i_num)])
+        self.W_in = np.array([np.random.normal(0, 1, M) for n in range(i_num)])
         self.e = np.array([np.exp(1j * 2 * np.pi * n * np.linspace(0, M - 1, M) / M) for n in range(i_num)])
 
         # hidden (LSTM) layer
-        self.W_f_1 = np.transpose(np.array([np.random.normal(0, .01, i_num) for n in range(hidden_num)]))
-        self.W_f_2 = np.array([np.random.normal(0, .01, X_len + M - 1) for n in range(hidden_num)])
-        self.W_f_h = np.transpose(np.array([np.random.normal(0, 1, hidden_num) for n in range(hidden_num)]))
+        self.W_f_1 = np.array([np.random.normal(0, 1, i_num) for n in range(hidden_num)])
+        self.W_f_2 = np.array([np.random.normal(0, 1, X_len + M - 1) for n in range(hidden_num)])
+        self.W_f_h = np.array([np.random.normal(0, 1, hidden_num) for n in range(hidden_num)])
 
-        self.W_i_1 = np.transpose(np.array([np.random.normal(0, .01, i_num) for n in range(hidden_num)]))
-        self.W_i_2 = np.array([np.random.normal(0, .01, X_len + M - 1) for n in range(hidden_num)])
-        self.W_i_h = np.transpose(np.array([np.random.normal(0, 1, hidden_num) for n in range(hidden_num)]))
+        self.W_i_1 = np.array([np.random.normal(0, 1, i_num) for n in range(hidden_num)])
+        self.W_i_2 = np.array([np.random.normal(0, 1, X_len + M - 1) for n in range(hidden_num)])
+        self.W_i_h = np.array([np.random.normal(0, 1, hidden_num) for n in range(hidden_num)])
 
-        self.W_o_1 = np.transpose(np.array([np.random.normal(0, .01, i_num) for n in range(hidden_num)]))
-        self.W_o_2 = np.array([np.random.normal(0, .01, X_len + M - 1) for n in range(hidden_num)])
-        self.W_o_h = np.transpose(np.array([np.random.normal(0, 1, hidden_num) for n in range(hidden_num)]))
+        self.W_o_1 = np.array([np.random.normal(0, 1, i_num) for n in range(hidden_num)])
+        self.W_o_2 = np.array([np.random.normal(0, 1, X_len + M - 1) for n in range(hidden_num)])
+        self.W_o_h = np.array([np.random.normal(0, 1, hidden_num) for n in range(hidden_num)])
 
-        self.W_C_1 = np.transpose(np.array([np.random.normal(0, .01, i_num) for n in range(hidden_num)]))
-        self.W_C_2 = np.array([np.random.normal(0, .01, X_len + M - 1) for n in range(hidden_num)])
-        self.W_C_h = np.transpose(np.array([np.random.normal(0, 1, hidden_num) for n in range(hidden_num)]))
+        self.W_C_1 = np.array([np.random.normal(0, 1, i_num) for n in range(hidden_num)])
+        self.W_C_2 = np.array([np.random.normal(0, 1, X_len + M - 1) for n in range(hidden_num)])
+        self.W_C_h = np.array([np.random.normal(0, 1, hidden_num) for n in range(hidden_num)])
 
         # memory values
         self.clear_memory()
@@ -105,6 +107,7 @@ class nn():
         # i_t = input gate activation
         #print("hmmmm")
         #print(self.W_f_h[0])
+        #print(self.hidden_nodes_num)
         f_t = np.array(
             [sigmoid(np.inner(np.matmul(self.W_f_1[i], H), self.W_f_2[i]) + np.inner(self.W_f_h[i], self.h_last)) \
              for i in range(self.hidden_nodes_num)])
@@ -155,21 +158,24 @@ class nn():
         return a_out
 
     def backprop(self, X, Y):
+        #print(self.z_k[:,0])
         L = len(Y)
-        eta = 1e-3
+        eta_out = 2e-3
+        eta_hidden = 1e-6
+        eta_in = 1e-6
 
         #
         # output layer
         #
-        grad1 = np.sum(np.array([self.y_j[i] * ((2*Y[i] - 1) - self.z_k[i][0]) for i in range(L)]), axis=0).tolist()
-        grad2 = np.sum(np.array([self.y_j[i] * ((2*Y[i] - 1) - self.z_k[i][1]) for i in range(L)]), axis=0).tolist()
+        grad1 = np.sum(np.array([self.y_j[i] * ((1*(Y[i] == 0) - 0) - self.z_k[i][0]) for i in range(L)]), axis=0).tolist()
+        grad2 = np.sum(np.array([self.y_j[i] * ((1*(Y[i] == 1) - 0) - self.z_k[i][1]) for i in range(L)]), axis=0).tolist()
 
         grad = []
         grad.append(grad1)
         grad.append(grad2)
 
         #self.W_out = np.array(grad)
-        self.W_out = self.W_out - eta*np.array(grad)
+        self.W_out = self.W_out + eta_out*np.array(grad)
 
         #
         # hidden layer
@@ -276,18 +282,21 @@ class nn():
         # self.W_o_1 = np.array(new_W_C_1)
         # self.W_o_2 = np.array(new_W_C_2)
         # self.W_o_h = np.array(new_W_C_h)
-        self.W_f_1 = self.W_f_1 - eta*np.array(new_W_f_1)
-        self.W_f_2 = self.W_f_2 - eta*np.array(new_W_f_2)
-        self.W_f_h = self.W_f_h - eta*np.array(new_W_f_h)
-        self.W_i_1 = self.W_i_1 - eta*np.array(new_W_i_1)
-        self.W_i_2 = self.W_i_2 - eta*np.array(new_W_i_2)
-        self.W_i_h = self.W_i_h - eta*np.array(new_W_i_h)
-        self.W_C_1 = self.W_C_1 - eta*np.array(new_W_C_1)
-        self.W_C_2 = self.W_C_2 - eta*np.array(new_W_C_2)
-        self.W_C_h = self.W_C_h - eta*np.array(new_W_C_h)
-        self.W_o_1 = self.W_o_1 - eta*np.array(new_W_C_1)
-        self.W_o_2 = self.W_o_2 - eta*np.array(new_W_C_2)
-        self.W_o_h = self.W_o_h - eta*np.array(new_W_C_h)
+        
+        self.W_f_1 = self.W_f_1 - eta_hidden*np.array(new_W_f_1)
+        self.W_f_2 = self.W_f_2 - eta_hidden*np.array(new_W_f_2)
+        self.W_f_h = self.W_f_h - eta_hidden*np.array(new_W_f_h)
+        self.W_i_1 = self.W_i_1 - eta_hidden*np.array(new_W_i_1)
+        self.W_i_2 = self.W_i_2 - eta_hidden*np.array(new_W_i_2)
+        self.W_i_h = self.W_i_h - eta_hidden*np.array(new_W_i_h)
+        self.W_C_1 = self.W_C_1 - eta_hidden*np.array(new_W_C_1)
+        self.W_C_2 = self.W_C_2 - eta_hidden*np.array(new_W_C_2)
+        self.W_C_h = self.W_C_h - eta_hidden*np.array(new_W_C_h)
+        self.W_o_1 = self.W_o_1 - eta_hidden*np.array(new_W_C_1)
+        self.W_o_2 = self.W_o_2 - eta_hidden*np.array(new_W_C_2)
+        self.W_o_h = self.W_o_h - eta_hidden*np.array(new_W_C_h)
+        
+        #print(self.W_f_1)
 
         #
         # input layer
@@ -355,10 +364,14 @@ class nn():
         #print(self.W_in)
         #print(weight_updates)
         #self.W_in = weight_updates
-        self.W_in = self.W_in - eta*weight_updates
+        #self.W_in = self.W_in - eta*weight_updates
+        #print(self.W_out)
+        
+        #print("Output Layer Change: " + str(np.linalg.norm(eta_out*np.array(grad))))
+        #print("Hidden Layer Change: " + str(np.linalg.norm(eta_hidden*np.array(new_W_f_1))))
+        #print("Input Layer Change: " + str(np.linalg.norm(eta_in*weight_updates)))
 
-        self.clear_memory()
-
+        self.W_in = self.W_in - eta_in*weight_updates
 
     def clear_memory(self):
         # memory values
@@ -384,7 +397,7 @@ class nn():
         exp_h = np.exp(h)
         return exp_h / np.sum(exp_h)
 
-    def error(self, Y):
+    def acc(self, Y):
         preds = self.classify()
         return np.sum(preds == Y) / len(Y)
 
@@ -404,18 +417,23 @@ def decimate_series(data, R, M):
     L = len(x)
     X = np.array([x[R * i: R * i + M] for i in range(int(np.floor((L - M) / R)))])
     Y = np.array(
-        [int(max(x[R * i: R * i + M]) > max(x[R * i + M: R * i + M + 5])) for i in range(int(np.floor((L - M) / R)))])
+        [int(max(x[R * i: R * i + M]) < max(x[R * i + M: R * i + M + 5])) for i in range(int(np.floor((L - M) / R)))])
     return X, Y
 
 
 if __name__ == '__main__':
     ts = TimeSeries(key='8VHYYYZR0BTCNJ2F', output_format='pandas')
     df,_ = ts.get_daily(symbol='GOOG', outputsize='full')
-    data = df.iloc[0:253, 3:4].values.tolist()
+    minmax = MinMaxScaler().fit(df.iloc[0:253, 3:4].astype('float32')) # Close index
+    df_log = minmax.transform(df.iloc[0:253, 3:4].astype('float32')) # Close index
+    data = df_log
+
+    #df_log = pd.DataFrame(df_log)
     
-    scale = 1000
+    #data = df.iloc[0:253, 3:4].values.tolist()
+    
+    scale = 10
     x = [point[0]/scale for point in data]
-    print(x)
     # nn properties
     in_node_num = 10
     hidden_node_num = 10
@@ -423,15 +441,29 @@ if __name__ == '__main__':
 
     # data, dimension, and number of points
     dim = 5
-    R = 5
+    R = 1
     X, Y = decimate_series(x, R, dim)
     test = nn(in_node_num, hidden_node_num, M, dim)
 
-    iterations = 1000
+    num_batches = 1
+    batch_size = int(np.floor(X.shape[0] / num_batches));
+    iterations = 300
     for it in range(iterations):
-        for i in range(X.shape[0]):
+        for j in range(num_batches):
+            for i in range(batch_size):
+                test.feedforward(X[batch_size*j + i])
+            test.backprop(X[batch_size*j:batch_size*(j+1)], Y[batch_size*j:batch_size*(j+1)])
+            test.clear_memory()
+        for j in range(X.shape[0]):
             test.feedforward(X[i])
-        print("Iteration: " + str(it) + " " + str(test.error(Y)))
-        test.backprop(X, Y)
-        
+        print("Epoch: " + str(it + 1) + ". Accuracy: " + str(test.acc(Y)))
+        print('-------')
+        test.clear_memory()
+#     for it in range(iterations):
+#         for i in range(X.shape[0]):
+#             test.feedforward(X[i])
+#         print("Iteration: " + str(it + 1) + " " + str(test.acc(Y)))
+#         print('-------')
+#         test.backprop(X, Y)
+#         test.clear_memory()
         
